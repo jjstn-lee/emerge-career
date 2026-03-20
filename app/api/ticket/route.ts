@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto';
+import { Category, categorize } from '@/lib/openai/categorizer'
 
 // function generateTicketId(): string {
 //   const now = new Date();
@@ -67,17 +68,19 @@ export async function POST(request: NextRequest) {
     const dateHeader = formData.get('Date')?.toString() || formData.get('date')?.toString() || null
     const subject = formData.get('subject')?.toString() || 'No subject'
     const body = (formData.get('stripped-text') || formData.get('body-plain'))?.toString() || ''
+    const category = categorize(subject, body) // OpenAI API call
 
     // const ticketId = generateTicketId()
     
     // TODO: categorize ticket
+
     const { error } = await supabase.from('tickets').insert({
       // id: ticketId,
       sender,
       timestamp: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
       subject,
       body,
-      category: null,
+      category,
     })
 
     if (error) {
@@ -94,6 +97,7 @@ export async function POST(request: NextRequest) {
       success: true,
       // ticketId,
     });
+
   } catch (e) {
     console.error('Unexpected error in POST /api/ticket:', e)
     return NextResponse.json({ error: 'Internal server error', details: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
