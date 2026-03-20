@@ -1,65 +1,67 @@
 "use server";
 
-function generateTicketId(): string {
-  const now = new Date();
-
-  // Format date as YYMMDD
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, "0");
-  const day = now.getDate().toString().padStart(2, "0");
-
-  const datePart = `${year}${month}${day}`;
-
-  // Generate random base36 string
-  const randomPart = Math.random()
-    .toString(36)
-    .substring(2, 8) // 6 characters
-    .toUpperCase();
-
-  return `${datePart}-${randomPart}`;
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-// import { createHmac } from 'crypto'
+import { createHmac } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+
+// function generateTicketId(): string {
+//   const now = new Date();
+
+//   // Format date as YYMMDD
+//   const year = now.getFullYear().toString().slice(-2);
+//   const month = (now.getMonth() + 1).toString().padStart(2, "0");
+//   const day = now.getDate().toString().padStart(2, "0");
+
+//   const datePart = `${year}${month}${day}`;
+
+//   // Generate random base36 string
+//   const randomPart = Math.random()
+//     .toString(36)
+//     .substring(2, 8) // 6 characters
+//     .toUpperCase();
+
+//   return `${datePart}-${randomPart}`;
+// }
 
 // export const dynamic = 'force-dynamic'
 
-// function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
-//   const apiKey = process.env.MAILGUN_API_KEY
-//   if (!apiKey) return false
+function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
+  const apiKey = process.env.MAILGUN_API_KEY
+  if (!apiKey) return false
 
-//   const digest = createHmac('sha256', apiKey)
-//     .update(timestamp + token)
-//     .digest('hex')
+  const digest = createHmac('sha256', apiKey)
+    .update(timestamp + token)
+    .digest('hex')
 
-//   return digest === signature
-// }
+  return digest === signature
+}
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
     const formData = await request.formData()
 
-    // const timestamp = formData.get('timestamp')?.toString() || ''
-    // const token = formData.get('token')?.toString() || ''
-    // const signature = formData.get('signature')?.toString() || ''
+    // mailgun verification
+    const timestamp = formData.get('timestamp')?.toString() || ''
+    const token = formData.get('token')?.toString() || ''
+    const signature = formData.get('signature')?.toString() || ''
 
-    // try {
-    //   if (!verifyMailgunSignature(timestamp, token, signature)) {
-    //     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    //   }
-    // } catch (e) {
-    //   console.error('Signature verification failed:', e)
-    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    // }
+    try {
+      if (!verifyMailgunSignature(timestamp, token, signature)) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      }
+    } catch (e) {
+      console.error('Signature verification failed:', e)
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
 
+    // taking email data from form
     const sender = formData.get('sender')?.toString() || 'unknown sender'
     const dateHeader = formData.get('Date')?.toString() || formData.get('date')?.toString() || null
     const subject = formData.get('subject')?.toString() || 'No subject'
     const body = (formData.get('stripped-text') || formData.get('body-plain'))?.toString() || ''
 
-    const ticketId = generateTicketId()
+    // const ticketId = generateTicketId()
     
     // TODO: categorize ticket
     const { error } = await supabase.from('tickets').insert({
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      ticketId,
+      // ticketId,
     });
   } catch (e) {
     console.error('Unexpected error in POST /api/ticket:', e)
