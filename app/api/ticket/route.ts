@@ -27,6 +27,8 @@ import { Category, categorize } from '@/lib/qwen/categorizer'
 
 // export const dynamic = 'force-dynamic'
 
+
+
 function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
   const webhookKey = process.env.MAILGUN_WEBHOOK_KEY
 
@@ -64,15 +66,12 @@ export async function POST(request: NextRequest) {
     }
 
     // taking email data from form
+    const messageID = formData.get('Message-ID')?.toString() || 'No Message-ID'
     const sender = formData.get('sender')?.toString() || 'unknown sender'
     const dateHeader = formData.get('Date')?.toString() || formData.get('date')?.toString() || null
     const subject = formData.get('subject')?.toString() || 'No subject'
     const body = (formData.get('stripped-text') || formData.get('body-plain'))?.toString() || ''
     const category = await categorize(subject, body) as string // OpenAI API call
-
-    // const ticketId = generateTicketId()
-    
-    // TODO: categorize ticket
 
     const { error } = await supabase.from('tickets').insert({
       // id: ticketId,
@@ -89,9 +88,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Success!")
-    for (const [key, value] of formData.entries()) {
-      console.log(key, value)
-    }
+    // for (const [key, value] of formData.entries()) {
+    //   console.log(key, value)
+    // }
+
+    sendReceipt(sender, subject, body, messageID)
+
 
     return NextResponse.json({
       success: true,
@@ -101,5 +103,39 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     console.error('Unexpected error in POST /api/ticket:', e)
     return NextResponse.json({ error: 'Internal server error', details: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+  }
+}
+
+
+async function sendReceipt(sender: string, subject: string, body: string, messageID: string) {
+  // send success message to recipient
+  const autoReplyMessage = {
+    from: "Auto Reply <reply@yourdomain.com>",
+    to: sender,
+    subject: `Re: ${subject}`,
+    text: "Thanks for your email! We've entered your complaint into our system and will get back to you shortly.",
+    "h:In-Reply-To": messageID,
+    "h:References": messageID
+  };
+
+  const url = `https://api.mailgun.net/v3/${process.env.MAILGUN_DOMAIN}/messages`;
+  const responseBody = new URLSearchParams();
+  for (const [key, value] of Object.entries(autoReplyMessage)) {
+    if (value) responseBody.append(key, value.toString());
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${Buffer.from(`api:${process.env.MAILGUN_API_KEY}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: responseBody.toString()
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Mailgun error:", text);
+    return NextResponse.json({ ok: false, error: text }, { status: 500 });
   }
 }
