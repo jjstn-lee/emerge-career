@@ -27,15 +27,15 @@ import crypto from 'crypto';
 // export const dynamic = 'force-dynamic'
 
 function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
-  const apiKey = process.env.MAILGUN_API_KEY
+  const webhookKey = process.env.MAILGUN_WEBHOOK_KEY
 
-  if (!apiKey) {
+  if (!webhookKey) {
     console.log("mailgun API key not found")
     return false
   }
 
   const encodedToken = crypto
-        .createHmac('sha256', apiKey)
+        .createHmac('sha256', webhookKey)
         .update(timestamp.concat(token))
         .digest('hex')
   console.log(`in verifyMailgunSignature: ${ encodedToken === signature }`)
