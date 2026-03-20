@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     
     // TODO: categorize ticket
     const { error } = await supabase.from('tickets').insert({
-      ticketId,
+      id: ticketId,
       sender,
       timestamp: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
       subject,
