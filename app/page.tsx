@@ -106,7 +106,7 @@ T022,2024-01-10,Billing,Critical,0.8,3.5,Resolved
 T023,2024-01-10,Technical,High,1.6,8.7,Resolved
 T024,2024-01-10,Account,Medium,5.5,20.0,Resolved
 T025,2024-01-11,Technical,Low,7.0,28.0,Resolved`;
-
+/*
 // ── Stat Card ──────────────────────────────────────────────────────────────
 interface StatCardProps {
   label: string;
@@ -128,6 +128,7 @@ function StatCard({ label, value, sub, color = COLORS.accent }: StatCardProps) {
     </div>
   );
 }
+*/
 
 // ── Chart Card ─────────────────────────────────────────────────────────────
 interface ChartCardProps {
@@ -349,13 +350,13 @@ export default function Home() {
       </div>
 
       <div style={{ padding: "28px 32px", maxWidth: 1280, margin: "0 auto" }}>
-        {/* KPI Row */}
+        {/* KPI Row
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
           <StatCard label="Total Tickets" value={stats!.total} sub={`${stats!.resolved} resolved`} />
           <StatCard label="Resolution Rate" value={`${stats!.resolutionRate}%`} color={COLORS.gold} />
           <StatCard label="Avg Response Time" value={`${stats!.avgRes}h`} color={COLORS.accent} />
           <StatCard label="Avg Resolution Time" value={`${stats!.avgResol}h`} color={COLORS.rose} />
-        </div>
+        </div> */}
 
         {/* Charts Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
@@ -397,10 +398,12 @@ export default function Home() {
                 <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
                 <XAxis type="number" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="category" tick={{ fill: COLORS.text, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} width={110} />
-                <Tooltip
+                {/* <Tooltip
                   {...tooltipStyle}
-                  formatter={(val: number) => [`${val}h`, "Avg Response"]}
-                />
+                  formatter={(value, name) =>
+                    value != null ? [`${value}h`, name] : ["-", name]
+                  }
+                /> */}
                 <Bar dataKey="avg" radius={[0, 4, 4, 0]} name="Avg Response (hrs)">
                   {stats!.responseByCategory.map((_, i) => (
                     <Cell key={i} fill={COLORS.cats[i % COLORS.cats.length]} />
@@ -434,11 +437,12 @@ export default function Home() {
                   label={{ value: "Resolution (hrs)", fill: COLORS.muted, fontSize: 10, angle: -90, position: "insideLeft" }}
                 />
                 <ZAxis range={[50, 50]} />
-                <Tooltip
-                  cursor={{ strokeDasharray: "3 3", stroke: COLORS.border }}
-                  contentStyle={{ background: "#1a2035", border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 12, color: COLORS.text }}
-                  formatter={(val: number, name: string) => [`${val}h`, name === "resp" ? "Response" : "Resolution"]}
-                />
+                {/* <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value, name) =>
+                    value != null ? [`${value}h`, name] : ["-", name]
+                  }
+                /> */}
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 11, color: COLORS.muted, fontFamily: "DM Mono" }} />
                 {categories.map((cat, i) => (
                   <Scatter
