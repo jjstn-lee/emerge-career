@@ -1,5 +1,24 @@
 "use server";
 
+function generateTicketId(): string {
+  const now = new Date();
+
+  // Format date as YYMMDD
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, "0");
+  const day = now.getDate().toString().padStart(2, "0");
+
+  const datePart = `${year}${month}${day}`;
+
+  // Generate random base36 string
+  const randomPart = Math.random()
+    .toString(36)
+    .substring(2, 8) // 6 characters
+    .toUpperCase();
+
+  return `${datePart}-${randomPart}`;
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 // import { createHmac } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
@@ -40,24 +59,32 @@ export async function POST(request: NextRequest) {
     const subject = formData.get('subject')?.toString() || 'No subject'
     const body = (formData.get('stripped-text') || formData.get('body-plain'))?.toString() || ''
 
-    const { data, error } = await supabase.from('tickets').insert({
+    const ticketId = generateTicketId()
+    
+    // TODO: categorize ticket
+    const { error } = await supabase.from('tickets').insert({
+      ticketId,
       sender,
+      timestamp: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
       subject,
       body,
-      timestamp: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
+      category: null,
     })
 
-    // if (error) {
-    //   console.error('Supabase insert error:', error)
-    //   return NextResponse.json({ error: 'Failed to save ticket', details: error.message }, { status: 500 })
-    // }
-    
+    if (error) {
+      console.error('Supabase insert error:', error)
+      return NextResponse.json({ error: 'Failed to save ticket', details: error.message }, { status: 500 })
+    }
+
     console.log("Success!")
     for (const [key, value] of formData.entries()) {
       console.log(key, value)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      ticketId,
+    });
   } catch (e) {
     console.error('Unexpected error in POST /api/ticket:', e)
     return NextResponse.json({ error: 'Internal server error', details: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
