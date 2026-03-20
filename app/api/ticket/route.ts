@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto';
-import { Category, categorize } from '@/lib/openai/categorizer'
+import { Category, categorize } from '@/lib/qwen/categorizer'
 
 // function generateTicketId(): string {
 //   const now = new Date();
