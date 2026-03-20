@@ -51,8 +51,12 @@ export async function POST(request: NextRequest) {
     //   console.error('Supabase insert error:', error)
     //   return NextResponse.json({ error: 'Failed to save ticket', details: error.message }, { status: 500 })
     // }
+    
+    console.log("Success!")
+    for (const [key, value] of formData.entries()) {
+      console.log(key, value)
+    }
 
-    console.log('Received new email! Sending success response...')
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('Unexpected error in POST /api/ticket:', e)
