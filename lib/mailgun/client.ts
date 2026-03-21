@@ -7,7 +7,7 @@ export const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_
 
 console.log('API Key present:', !!process.env.MAILGUN_API_KEY);
 
-export function sendMessage(sender: string, subject: string, messageID: string) {
+export async function sendMessage(sender: string, subject: string, messageID: string) {
     console.log("in mailgun/client.ts")
     console.log(`sender: ${sender}`)
     console.log(`subject: ${subject}`)

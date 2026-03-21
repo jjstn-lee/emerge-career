@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save ticket', details: error.message }, { status: 500 })
     }
 
-    sendMessage(sender, subject, messageID)
+    await sendMessage(sender, subject, messageID)
     // sanity check for what formdata looks like
     for (const [key, value] of formData.entries()) {
       let stringValue: string;
