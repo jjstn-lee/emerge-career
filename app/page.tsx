@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Cell,
 } from "recharts";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -74,62 +75,42 @@ const tooltipStyle = {
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [tickets, setTickets] = useState<Ticket[] | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchTickets = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/ticket', { method: 'GET' });
+        const [ticketsRes, statsRes] = await Promise.all([
+          fetch('/api/ticket', { method: 'GET' }),
+          fetch('/api/ticket/stats', { method: 'GET' })
+        ]);
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch tickets');
+        if (!ticketsRes.ok || !statsRes.ok) {
+          throw new Error('Failed to fetch data');
         }
 
-        const data = await response.json();
-        setTickets(data.tickets || []);
+        const ticketsData = await ticketsRes.json();
+        const statsData = await statsRes.json();
+
+        setTickets(ticketsData.tickets || []);
+        setStats(statsData);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load tickets');
+        setError(err instanceof Error ? err.message : 'Failed to load data');
         setTickets([]);
+        setStats(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTickets();
+    fetchData();
   }, []);
 
-  // ── Derived Data ───────────────────────────────────────────────────────
-  const stats = useMemo((): Stats | null => {
-    if (!tickets || tickets.length === 0) return null;
-
-    const total = tickets.length;
-
-    // Volume by day
-    const byDay: Record<string, number> = {};
-    tickets.forEach((t) => {
-      const date = new Date(t.timestamp).toISOString().split('T')[0];
-      byDay[date] = (byDay[date] || 0) + 1;
-    });
-    const volumeByDay: DayVolume[] = Object.entries(byDay)
-      .sort(([a], [b]) => (a > b ? 1 : -1))
-      .map(([date, count]) => ({ date: date.slice(5), count }));
-
-    // Volume by category
-    const byCat: Record<string, number> = {};
-    tickets.forEach((t) => { byCat[t.category] = (byCat[t.category] || 0) + 1; });
-    const volumeByCat: CatVolume[] = Object.entries(byCat)
-      .sort(([, a], [, b]) => b - a)
-      .map(([category, count]) => ({ category, count }));
-
-    return {
-      total,
-      volumeByDay,
-      volumeByCat,
-    };
-  }, [tickets]);
 
   // ── Loading State ──────────────────────────────────────────────────────
   if (loading) {
@@ -216,6 +197,25 @@ export default function Home() {
       <div style={{ padding: "28px 32px", maxWidth: 1280, margin: "0 auto" }}>
         {/* Charts Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 24 }}>
+          {/* Volume by Category */}
+          <ChartCard title="Volume by Category">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats!.volumeByCat} layout="vertical" barCategoryGap="25%">
+                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
+                <XAxis type="number" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis type="category" dataKey="category" tick={{ fill: COLORS.text, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} width={110} />
+                <Tooltip {...tooltipStyle} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Tickets">
+                  {stats!.volumeByCat.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={COLORS.cats[i % COLORS.cats.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
           {/* Volume by Day */}
           <ChartCard title="Volume by Day" span={2}>
@@ -230,22 +230,7 @@ export default function Home() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Volume by Category */}
-          <ChartCard title="Volume by Category">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stats!.volumeByCat} layout="vertical" barCategoryGap="25%">
-                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
-                <XAxis type="number" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis type="category" dataKey="category" tick={{ fill: COLORS.text, fontSize: 11, fontFamily: "DM Mono" }} axisLine={false} tickLine={false} width={110} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Tickets">
-                  {stats!.volumeByCat.map((_, i) => (
-                    <text key={i} x={0} y={0} fill={COLORS.cats[i % COLORS.cats.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+
 
         </div>
 
@@ -254,10 +239,11 @@ export default function Home() {
           <div style={{ padding: "14px 24px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 11, letterSpacing: 2, color: COLORS.muted, textTransform: "uppercase" }}>
             Ticket Log — {tickets.length} records
           </div>
-          <div style={{ overflowX: "auto", maxHeight: "500px", overflowY: "auto" }}>
+          <div style={{ overflowX: "auto", maxHeight: "600px", overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead style={{ position: "sticky", top: 0, background: COLORS.surface }}>
                 <tr>
+                  <th style={{ padding: "10px 16px", textAlign: "left", color: COLORS.muted, fontWeight: 400, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 1, fontSize: 10, width: 30 }}></th>
                   <th style={{ padding: "10px 16px", textAlign: "left", color: COLORS.muted, fontWeight: 400, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 1, fontSize: 10 }}>Sender</th>
                   <th style={{ padding: "10px 16px", textAlign: "left", color: COLORS.muted, fontWeight: 400, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 1, fontSize: 10 }}>Date</th>
                   <th style={{ padding: "10px 16px", textAlign: "left", color: COLORS.muted, fontWeight: 400, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 1, fontSize: 10 }}>Category</th>
@@ -266,12 +252,71 @@ export default function Home() {
               </thead>
               <tbody>
                 {tickets.map((t, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${COLORS.border}20`, background: i % 2 === 0 ? "transparent" : "#ffffff04" }}>
-                    <td style={{ padding: "9px 16px", color: COLORS.text, whiteSpace: "nowrap" }}>{t.sender}</td>
-                    <td style={{ padding: "9px 16px", color: COLORS.muted, whiteSpace: "nowrap", fontSize: 11 }}>{new Date(t.timestamp).toLocaleDateString()}</td>
-                    <td style={{ padding: "9px 16px", color: COLORS.accent, whiteSpace: "nowrap" }}>{t.category}</td>
-                    <td style={{ padding: "9px 16px", color: COLORS.text, maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</td>
-                  </tr>
+                  <>
+                    <tr key={t.id}
+                      onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                      style={{
+                        borderBottom: `1px solid ${COLORS.border}20`,
+                        background: i % 2 === 0 ? "transparent" : "#ffffff04",
+                        cursor: "pointer",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = COLORS.accentDim}
+                      onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "transparent" : "#ffffff04"}
+                    >
+                      <td style={{ padding: "9px 16px", color: COLORS.accent, whiteSpace: "nowrap", fontSize: 14 }}>
+                        {expandedId === t.id ? "▼" : "▶"}
+                      </td>
+                      <td style={{ padding: "9px 16px", color: COLORS.text, whiteSpace: "nowrap" }}>{t.sender}</td>
+                      <td style={{ padding: "9px 16px", color: COLORS.muted, whiteSpace: "nowrap", fontSize: 11 }}>{new Date(t.timestamp).toLocaleDateString()}</td>
+                      <td style={{ padding: "9px 16px", color: COLORS.accent, whiteSpace: "nowrap" }}>{t.category}</td>
+                      <td style={{ padding: "9px 16px", color: COLORS.text, maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</td>
+                    </tr>
+                    {expandedId === t.id && (
+                      <tr style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
+                        <td colSpan={5} style={{ padding: "16px 24px" }}>
+                          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 16 }}>
+                              <div>
+                                <div style={{ fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>From</div>
+                                <div style={{ color: COLORS.text, fontSize: 12 }}>{t.sender}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Category</div>
+                                <div style={{ color: COLORS.accent, fontSize: 12 }}>{t.category}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Date and Time</div>
+                                <div style={{ color: COLORS.text, fontSize: 12 }}>{new Date(t.timestamp).toLocaleString()}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Subject</div>
+                                <div style={{ color: COLORS.text, fontSize: 12 }}>{t.subject}</div>
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 16 }}>
+                              <div style={{ fontSize: 10, color: COLORS.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Body</div>
+                              <div style={{
+                                background: COLORS.bg,
+                                border: `1px solid ${COLORS.border}`,
+                                borderRadius: 6,
+                                padding: 12,
+                                color: COLORS.text,
+                                fontSize: 12,
+                                lineHeight: 1.6,
+                                maxHeight: 300,
+                                overflowY: "auto",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word"
+                              }}>
+                                {t.body}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

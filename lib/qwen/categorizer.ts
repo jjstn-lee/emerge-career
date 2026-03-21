@@ -21,6 +21,7 @@ function buildPrompt(subject: string, body: string) {
         Instructions:
         - Choose the single best category.
         - Respond with ONLY the category name (no explanation).
+        - Respond with plain text only. Do not use markdown, bullet points, headers, special characters, or formatting of any kind.
 
         Email Subject:
         ${subject}
@@ -35,31 +36,35 @@ interface NvidiaResponse {
 }
  
 export async function categorize(subject: string, body: string): Promise<string> {
-    
-
-const response = await fetch(INVOKE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${NVIDIA_API_KEY}`,
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model: "qwen/qwen3.5-122b-a10b",
-      messages: [{ role: "user", content: buildPrompt(subject, body) }],
-      max_tokens: 16384,
-      temperature: 0.6,
-      top_p: 0.95,
-      stream: false,
-      chat_template_kwargs: { enable_thinking: true },
-    }),
-  });
- 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NVIDIA API error ${response.status}: ${errorText}`);
-  }
- 
-  const data: NvidiaResponse = await response.json();
-  return data.choices[0].message.content;
+  const response = await fetch(INVOKE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${NVIDIA_API_KEY}`,
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        model: "qwen/qwen3.5-122b-a10b",
+        messages: [{ role: "user", content: buildPrompt(subject, body) }],
+        max_tokens: 16384,
+        temperature: 0.6,
+        top_p: 0.95,
+        stream: false,
+        chat_template_kwargs: { enable_thinking: true },
+      }),
+    });
+  
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`NVIDIA API error ${response.status}: ${errorText}`);
+    }
+  
+    const data: NvidiaResponse = await response.json();
+    return data.choices[0].message.content
+      .trim()
+      .replace(/[\n\r]+/g, ' ')           // newlines → space
+      .replace(/[*_~`#>]+/g, '')          // markdown symbols
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')  // [links](url) → link text
+      .replace(/!\[.*?\]\(.*?\)/g, '')    // images
+      .replace(/[-]{3,}/g, '')            // horizontal rules
 }
