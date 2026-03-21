@@ -5,7 +5,7 @@ const mailgun = new Mailgun(FormData); // or const formData = require('form-data
 
 export const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY!});
 
-console.log('API Key present:', !!process.env.MAILGUN_API_KEY);
+console.log(`API Key present: ${process.env.MAILGUN_API_KEY}`);
 
 export async function sendMessage(sender: string, subject: string, messageID: string) {
     console.log("in mailgun/client.ts")
