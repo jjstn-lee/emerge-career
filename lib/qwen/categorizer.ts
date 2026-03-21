@@ -62,9 +62,6 @@ export async function categorize(subject: string, body: string): Promise<string>
     const data: NvidiaResponse = await response.json();
     return data.choices[0].message.content
       .trim()
-      .replace(/[\n\r]+/g, ' ')           // newlines → space
+      .replace(/[\n\r]+/g, '')           // newlines → space
       .replace(/[*_~`#>]+/g, '')          // markdown symbols
-      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')  // [links](url) → link text
-      .replace(/!\[.*?\]\(.*?\)/g, '')    // images
-      .replace(/[-]{3,}/g, '')            // horizontal rules
 }
