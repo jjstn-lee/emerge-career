@@ -1,32 +1,10 @@
 "use server";
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto';
 import { Category, categorize } from '@/lib/qwen/categorizer'
 import { mg, sendMessage } from '@/lib/mailgun/client'
-
-// function generateTicketId(): string {
-//   const now = new Date();
-
-//   // Format date as YYMMDD
-//   const year = now.getFullYear().toString().slice(-2);
-//   const month = (now.getMonth() + 1).toString().padStart(2, "0");
-//   const day = now.getDate().toString().padStart(2, "0");
-
-//   const datePart = `${year}${month}${day}`;
-
-//   // Generate random base36 string
-//   const randomPart = Math.random()
-//     .toString(36)
-//     .substring(2, 8) // 6 characters
-//     .toUpperCase();
-
-//   return `${datePart}-${randomPart}`;
-// }
-
-// export const dynamic = 'force-dynamic'
 
 function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
   const webhookKey = process.env.MAILGUN_WEBHOOK_KEY
@@ -44,8 +22,33 @@ function verifyMailgunSignature(timestamp: string, token: string, signature: str
   return (encodedToken === signature)
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .order('timestamp', { ascending: false })
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch tickets', details: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ tickets: data })
+  } catch (e) {
+    console.error('Error fetching tickets:', e)
+    return NextResponse.json({ error: 'Internal server error', details: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get('content-type');
+
+    if (!contentType?.includes('multipart/form-data') && !contentType?.includes('application/x-www-form-urlencoded')) {
+      return NextResponse.json({ error: 'Invalid Content-Type. Expected multipart/form-data or application/x-www-form-urlencoded' }, { status: 400 });
+    }
+
     const supabase = createClient()
     const formData = await request.formData()
 
