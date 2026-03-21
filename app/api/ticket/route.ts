@@ -87,6 +87,18 @@ export async function POST(request: NextRequest) {
     }
 
     sendMessage(sender, subject, messageID)
+    //sanity check
+    for (const [key, value] of formData.entries()) {
+      let stringValue: string;
+
+      if (typeof value === "string") {
+        stringValue = value;
+      } else {
+        // If it's a File, you can use its name or read it differently
+        stringValue = value.name;
+      }
+    console.log(key, stringValue.slice(0, 50));
+  }
     console.log("Success!")
     return NextResponse.json({
       success: true,
