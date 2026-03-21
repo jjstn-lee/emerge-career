@@ -8,10 +8,10 @@ export const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_
 console.log(`API Key present: ${process.env.MAILGUN_API_KEY}`);
 
 export async function sendMessage(sender: string, subject: string, messageID: string) {
-    console.log("in mailgun/client.ts")
-    console.log(`sender: ${sender}`)
-    console.log(`subject: ${subject}`)
-    console.log(`messageID: ${messageID}`)
+    // console.log("in mailgun/client.ts")
+    // console.log(`sender: ${sender}`)
+    // console.log(`subject: ${subject}`)
+    // console.log(`messageID: ${messageID}`)
     mg.messages.create('mg.justin-hisung-lee.dev', {
         from: "ticket@mg.justin-hisung-lee.dev",
         to: sender,
@@ -23,5 +23,5 @@ export async function sendMessage(sender: string, subject: string, messageID: st
     .then(msg => console.log(msg)) // logs response data
     .catch(err => console.error(err)); // logs any error
 
-    console.log("in mailgun/client.ts, successfully sent message")
+    // console.log("in mailgun/client.ts, successfully sent message")
 }
