@@ -69,6 +69,5 @@ export async function generateEmail() {
     } catch (err) {
         console.error('Invalid email payload', err);
         return err;
-        console.log(stripped);
     }
 }
