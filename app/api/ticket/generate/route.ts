@@ -5,15 +5,25 @@ import { generateMailgunSignature } from '@/lib/mailgun/signature'
 // HARD CODED JSON MEMBERS
 const recipient = "ticket@justin-hisung-lee.dev"
 
-export async function POST(request: NextRequest) {
-    console.log("===in POST -> /api/ticket/generate===")
-    const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000'
 
-    const ticketEndpoint = `${baseUrl}/api/ticket`
-    console.log(`ticketEndpoint: ${ ticketEndpoint }`)
+async function generate(retries = 3, delay = 500) {
+  let lastError;
 
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await generateHelper();
+    } catch (err) {
+      lastError = err;
+      console.log(`   attempt ${i}`)
+      console.log(`   lastError ${lastError}`)
+      await new Promise(res => setTimeout(res, delay * (i + 1)));
+    }
+  }
+
+  throw lastError;
+}
+
+async function generateHelper() {
     // generate mailgun signature (timestamp + token + signature)
     console.log("generating mailgunSignature...")
     const mailgunSignature = generateMailgunSignature()
@@ -21,7 +31,7 @@ export async function POST(request: NextRequest) {
     console.log("generating emailJSON...")
     // generate customer ticket email via LLM
     const emailJSON = await generateEmail()
-    if (!emailJSON) {
+    if (emailJSON instanceof Error) {
         return NextResponse.json({ error: "Failed to generate email" }, { status: 500 })
     }
 
@@ -38,6 +48,29 @@ export async function POST(request: NextRequest) {
         generated: String(true),
     })
 
+    return payload
+}
+
+
+
+
+
+export async function POST(request: NextRequest) {
+    console.log("===in POST -> /api/ticket/generate===")
+
+    const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000'
+
+    const ticketEndpoint = `${baseUrl}/api/ticket`
+    console.log(`ticketEndpoint: ${ ticketEndpoint }`)
+    
+    const payload = await generate()
+    if (payload instanceof Error) {
+        console.error('Stopping execution due to error:', payload);
+        return; // prevents further computation
+    }
+
     console.log("sending POST to ticket endpoint...")
     // POST to `/api/ticket/` to fully test workflow
     try {
@@ -51,7 +84,7 @@ export async function POST(request: NextRequest) {
         if (!response.ok) {
             const text = await response.text()
             console.error(`Ticket endpoint failed: ${response.status}`, text)
-            return NextResponse.json({ error: "Ticket endpoint returned an error" }, { status: 500 })
+            return NextResponse.json({ error: "Ticket endpoint returned an error -- " }, { status: 500 })
         }
     } catch (e) {
         console.error("Fetch to ticket endpoint threw:", e)

@@ -53,7 +53,8 @@ export async function categorizeEmail(subject: string, body: string): Promise<st
     const data: MlvocaResponse = await response.json();
     return data.response
       .trim()
-      .replace(/[\n\r]+/g, '')           // newlines
-      .replace(/[*_~`#>]+/g, '')          // markdown symbols
+      .replace(/[\n\r]+/g, '')                  // newlines
+      .replace(/[*_~`#>]+/g, '')                // markdown symbols
+      .replace(/<think[\s\S]*?<\/think/g, '') // getting rid of <think> tags
       .toLowerCase()
 }

@@ -4,7 +4,7 @@ const MLVOCA_URL = "https://mlvoca.com/api/generate";
 const MODEL = "deepseek-r1:1.5b";
 
 const prompt = `
-You generate JSON objects that represent client IT issues at an education and career platform.
+You generate JSON objects that represent IT complaints coming from clients at an education and career platform.
 Output ONLY one valid JSON object with EXACTLY these four keys: "sender", "Date", "subject", "stripped-text".
 
 Rules:
@@ -14,6 +14,7 @@ Rules:
 - Do NOT include explanations.
 - All line breaks in "stripped-text" must be represented as \n.
 - "subject" and "stripped-text" must correspond to one of these categories: usage, account, feedback, education, career.
+- "subject" and "stripped-text" must be written from the perspective of the client, NOT the customer support analyst.
 
 Example of valid output:
 
@@ -55,14 +56,19 @@ export async function generateEmail() {
         .replace(/[*_~`#>]+/g, '')   // markdown symbols
         .replace(/\\'/g, "'");        // fix escaped single quotes
 
-    console.log(`RAW LLM OUTPUT: ${stripped}`);
+    const normalized = stripped.replace(/"((?:[^"\\]|\\.)*)"/g, (match) =>
+        match.replace(/\n/g, '\\n')
+    );
+
+    console.log(`NORMALIZED LLM OUTPUT: ${normalized}`);
 
     try {
-        const emailJSON = NormalizedEmailSchema.parse(JSON.parse(stripped));
+        const emailJSON = NormalizedEmailSchema.parse(JSON.parse(normalized));
         console.log(`Validated email: ${emailJSON}`);
         return emailJSON;
     } catch (err) {
         console.error('Invalid email payload', err);
+        return err;
         console.log(stripped);
     }
 }
