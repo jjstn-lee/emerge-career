@@ -16,6 +16,7 @@ function buildPrompt(subject: string, body: string) {
 
     Instructions:
     - Choose the single best category.
+    - You MUST choose one category.
     - Respond with ONLY the category name (no explanation).
     - Respond with plain text only. Do not use markdown, bullet points, headers, special characters, newline characters, or formatting of any kind.
 
