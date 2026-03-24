@@ -308,7 +308,7 @@ export default function Home() {
         {/* Charts Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 24 }}>
           {/* Volume by Category */}
-          <ChartCard title="Volume by Category" span={2}>
+          <ChartCard title="Volume by Category" span={1}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats!.volumeByCat} layout="vertical" barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
@@ -328,7 +328,7 @@ export default function Home() {
           </ChartCard>
 
           {/* Volume by Day */}
-          <ChartCard title="Volume by Day" span={2}>
+          <ChartCard title="Volume by Day" span={1}>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={stats!.volumeByDay} barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
