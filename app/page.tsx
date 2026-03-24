@@ -104,6 +104,7 @@ export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [generatedFilter, setGeneratedFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [animatingOut, setAnimatingOut] = useState<Set<number>>(new Set());
   // generation UI state
   const [generating, setGenerating] = useState<boolean>(false);
   const [generateStatus, setGenerateStatus] = useState<string | null>(null);
@@ -196,6 +197,11 @@ export default function Home() {
         ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 3px; }
         .refresh-btn { transition: color .15s; }
         .refresh-btn:hover { color: ${COLORS.accent} !important; }
+        @keyframes swipeOut {
+          0% { opacity: 1; transform: translateX(0); }
+          100% { opacity: 0; transform: translateX(100%); }
+        }
+        .ticket-swipe-out { animation: swipeOut 300ms ease-out forwards; }
       `}</style>
 
       {/* Top Nav */}
@@ -272,7 +278,7 @@ export default function Home() {
               >
                 <div style={{ fontWeight: 600, marginBottom: 6, color: COLORS.accent }}>Generate synthetic tickets</div>
                 <div style={{ color: COLORS.muted, lineHeight: 1.3 }}>
-                  Creates a small batch of synthetic support tickets for testing and demo purposes.
+                  Creates a small batch of 3 synthetic support tickets for testing and demo purposes.
                 </div>
               </div>
             </div>
@@ -436,6 +442,7 @@ export default function Home() {
                 {displayedTickets.map((t, i) => (
                   <>
                     <tr key={t.id}
+                      className={animatingOut.has(t.id) ? "ticket-swipe-out" : ""}
                       onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
                       style={{
                         borderBottom: `1px solid ${COLORS.border}20`,
@@ -466,7 +473,22 @@ export default function Home() {
                                 body: JSON.stringify({ status: newStatus })
                               });
                               if (!response.ok) throw new Error('Failed to update status');
-                              setTickets(prev => prev ? prev.map(ticket => ticket.id === t.id ? { ...ticket, status: newStatus } : ticket) : null);
+
+                              const willBeFiltered = statusFilter !== "all" && statusFilter !== newStatus;
+
+                              if (willBeFiltered) {
+                                setAnimatingOut(prev => new Set([...prev, t.id]));
+                                setTimeout(() => {
+                                  setTickets(prev => prev ? prev.map(ticket => ticket.id === t.id ? { ...ticket, status: newStatus } : ticket) : null);
+                                  setAnimatingOut(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(t.id);
+                                    return next;
+                                  });
+                                }, 300);
+                              } else {
+                                setTickets(prev => prev ? prev.map(ticket => ticket.id === t.id ? { ...ticket, status: newStatus } : ticket) : null);
+                              }
                             } catch (err) {
                               const msg = err instanceof Error ? err.message : 'Failed to update';
                               setErrors(prev => [...prev, msg]);

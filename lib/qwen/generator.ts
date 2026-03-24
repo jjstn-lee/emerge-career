@@ -15,7 +15,7 @@ Rules:
 - Do NOT include markdown or extra text like "json".
 - Do NOT include explanations.
 - All line breaks in "stripped-text" must be represented as \n.
-- "subject" and "stripped-text" must correspond to one of these categories: usage, account, feedback, education, career.
+- "subject" and "stripped-text" must correspond to one of these categories: usage, education, or career.
 - "subject" and "stripped-text" must be written from the perspective of the client, NOT the customer support analyst.
 
 Examples of valid output:
@@ -28,14 +28,14 @@ Examples of valid output:
 
 {
   "sender": "alex.rodriguez@gmail.com",
-  "subject": "Issue with Course Access and Job Applications",
+  "subject": "Issue with Course Access",
   "stripped-text": "Hello,\nI recently enrolled in a certification program on your platform, but I’m unable to access some of the course materials. Additionally, a few of my job applications still show as ‘pending’ without any updates.\nCould you please look into this and let me know how to proceed?\nThank you for your assistance.\nBest regards,\nAlex Rodriguez"
 }
 
 {
   "sender": "emily.chen@outlook.com",
-  "subject": "Confusion about Using Platform Features",
-  "stripped-text": "Hello,\nI'm generally confused about some features of the web application. Could you assist?\nThanks,\nEmily"
+  "subject": "Information about Coaching Program",
+  "stripped-text": "Hello,\nI'm generally confused about the coaching program that you guys offer. Could you assist me in finding that information?\nThanks,\nEmily"
 }`;
 
 interface MlvocaResponse {
