@@ -15,6 +15,7 @@ interface Ticket {
   body: string;
   category: string;
   generated: boolean;
+  status: 'unresolved' | 'in_progress' | 'resolved';
 }
 
 interface DayVolume {
@@ -75,6 +76,24 @@ const tooltipStyle = {
   cursor: { fill: COLORS.accentDim },
 };
 
+const getStatusColor = (status: 'unresolved' | 'in_progress' | 'resolved') => {
+  switch (status) {
+    case 'unresolved': return '#ff604a55';
+    case 'in_progress': return '#f0c1403e';
+    case 'resolved': return '#4caf4f28';
+    default: return '#1a1a1a20';
+  }
+};
+
+const getStatusTextColor = (status: 'unresolved' | 'in_progress' | 'resolved') => {
+  switch (status) {
+    case 'unresolved': return '#f24029';
+    case 'in_progress': return '#f0c040';
+    case 'resolved': return '#4caf50';
+    default: return '#1a1a1a';
+  }
+};
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function Home() {
   const [tickets, setTickets] = useState<Ticket[] | null>(null);
@@ -84,6 +103,7 @@ export default function Home() {
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [generatedFilter, setGeneratedFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   // generation UI state
   const [generating, setGenerating] = useState<boolean>(false);
   const [generateStatus, setGenerateStatus] = useState<string | null>(null);
@@ -159,6 +179,7 @@ export default function Home() {
   const displayedTickets = (tickets ?? [])
     .filter(t => categoryFilter === "all" || t.category === categoryFilter)
     .filter(t => generatedFilter === "all" || (generatedFilter === "generated" ? t.generated : !t.generated))
+    .filter(t => statusFilter === "all" || t.status === statusFilter)
     .sort((a, b) => {
       const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
       return sortOrder === "asc" ? diff : -diff;
@@ -397,6 +418,18 @@ export default function Home() {
                       <option value="real">Real</option>
                     </select>
                   </th>
+                  <th style={{ padding: "10px 16px", textAlign: "left", color: COLORS.muted, fontWeight: 400, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 1, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      style={{ background: COLORS.surface, color: COLORS.muted, fontSize: 11, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", borderRadius: 4, padding: "2px 6px", fontFamily: "'DM Mono', monospace" }}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="unresolved">Unresolved</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -421,10 +454,44 @@ export default function Home() {
                       <td style={{ padding: "9px 16px", color: COLORS.muted, whiteSpace: "nowrap", fontSize: 11 }}>{new Date(t.timestamp).toLocaleDateString()}</td>
                       <td style={{ padding: "9px 16px", color: COLORS.accent, whiteSpace: "nowrap" }}>{t.category}</td>
                       <td style={{ padding: "9px 16px", color: COLORS.accent, whiteSpace: "nowrap" }}>{t.generated ? "generated" : "real"}</td>
+                      <td style={{ padding: "9px 16px", whiteSpace: "nowrap" }}>
+                        <select
+                          value={t.status}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value as 'unresolved' | 'in_progress' | 'resolved';
+                            try {
+                              const response = await fetch(`/api/ticket/${t.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: newStatus })
+                              });
+                              if (!response.ok) throw new Error('Failed to update status');
+                              setTickets(prev => prev ? prev.map(ticket => ticket.id === t.id ? { ...ticket, status: newStatus } : ticket) : null);
+                            } catch (err) {
+                              const msg = err instanceof Error ? err.message : 'Failed to update';
+                              setErrors(prev => [...prev, msg]);
+                            }
+                          }}
+                          style={{
+                            background: getStatusColor(t.status),
+                            color: getStatusTextColor(t.status),
+                            fontSize: 11,
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            fontFamily: "'DM Mono', monospace",
+                            fontWeight: 500
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="unresolved">Unresolved</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                      </td>
                     </tr>
                     {expandedId === t.id && (
                       <tr style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
-                        <td colSpan={5} style={{ padding: "16px 24px" }}>
+                        <td colSpan={7} style={{ padding: "16px 24px" }}>
                           <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16 }}>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 16 }}>
                               <div>
