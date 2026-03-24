@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     console.log("parsing mailgun part of formdata...")
     // mailgun verification
-    const timestamp = formData.get('timestamp')?.toString() || ''
+    let timestamp = formData.get('timestamp')?.toString() || ''
     const token = formData.get('token')?.toString() || ''
     const signature = formData.get('signature')?.toString() || ''
 
@@ -71,14 +71,30 @@ export async function POST(request: NextRequest) {
     const category = await categorizeEmail(subject, body) as string // OpenAI API call
     const generated: boolean = (String(formData.get('generated')).toLowerCase() === 'true') || false; 
 
-    console.log(dateHeader)
+
+
+    if (dateHeader) {
+      const numeric = Number(dateHeader)
+
+      const date = !isNaN(numeric)
+        ? new Date(numeric * 1000) // Unix timestamp
+        : new Date(dateHeader)     // Date string
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid dateHeader format")
+      }
+
+      timestamp = date.toISOString()
+    } else {
+      timestamp = new Date().toISOString()
+    }
 
 
     console.log("inserting into supabase...")
     const { error } = await supabase.from('tickets').insert({
       // id: ticketId,
       sender,
-      timestamp: dateHeader ? new Date(parseInt(dateHeader) * 1000).toISOString() : new Date().toISOString(),
+      timestamp: //timest ? new Date(parseInt(dateHeader) * 1000).toISOString() : new Date().toISOString(),
       subject,
       body,
       category,
