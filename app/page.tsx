@@ -80,7 +80,6 @@ export default function Home() {
   const [tickets, setTickets] = useState<Ticket[] | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -90,6 +89,7 @@ export default function Home() {
   const [generateStatus, setGenerateStatus] = useState<string | null>(null);
   const [showGenerateTooltip, setShowGenerateTooltip] = useState<boolean>(false);
   const [showRefreshTooltip, setShowRefreshTooltip] = useState<boolean>(false);
+  const [errors, setErrors] = useState<string[]>([]);
 
   const fetchData = useCallback(async (showLoadingSpinner = false) => {
     try {
@@ -108,9 +108,8 @@ export default function Home() {
 
       setTickets(ticketsData.tickets || []);
       setStats(statsData);
-      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      setErrors(prev => [...prev, err instanceof Error ? err.message : 'Failed to load data']);
       setTickets([]);
       setStats(null);
     } finally {
@@ -136,21 +135,8 @@ export default function Home() {
     );
   }
 
-  // ── Error State ────────────────────────────────────────────────────────
-  if (error || !tickets) {
-    return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace", color: COLORS.text }}>
-        <style>{`
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: ${COLORS.bg}; }
-        `}</style>
-        <div style={{ fontSize: 14, color: COLORS.rose }}>Error: {error || 'Unknown error'}</div>
-      </div>
-    );
-  }
-
   // ── Empty State ────────────────────────────────────────────────────────
-  if (tickets.length === 0) {
+  if (!tickets || tickets.length === 0) {
     return (
       <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace", color: COLORS.text }}>
         <style>{`
@@ -478,6 +464,21 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Error Overlay */}
+      {errors.length > 0 && (
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000, maxWidth: 300 }}>
+          {errors.map((err, i) => (
+            <div key={i} style={{ background: COLORS.surface, border: `2px solid ${COLORS.border}`, borderRadius: 8, padding: 12, marginBottom: 8, color: COLORS.text, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ color: COLORS.rose, fontWeight: 600 }}>Error</div>
+                <button onClick={() => setErrors(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: COLORS.muted, cursor: 'pointer', fontSize: 14 }}>×</button>
+              </div>
+              <div style={{ marginTop: 8 }}>{err}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

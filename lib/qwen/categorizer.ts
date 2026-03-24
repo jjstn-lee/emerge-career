@@ -1,4 +1,4 @@
-export type Category = "usage" | "account" | "feedback" | "education | career";
+export type Category = "usage" | "education" | "career";
 
 const MLVOCA_URL = "https://mlvoca.com/api/generate";
 const MODEL = "deepseek-r1:1.5b";
@@ -8,9 +8,7 @@ function buildPrompt(subject: string, body: string) {
 
     Your task is to read the email subject and body, and classify the email into exactly one of the following categories:
 
-    - "usage": Questions or issues about how to use the product, features, errors, bugs, or performance.
-    - "account": Issues related to login, billing, subscriptions, account settings, or personal data.
-    - "feedback": Suggestions, feature requests, opinions, compliments, or complaints not tied to a specific usage issue.
+    - "usage": Issues related to using the product, (i.e, account, login, billing, settings, etc.)
     - "education": Clarifying questions about course material or issues related to scheduling tests
     - "career": Issues related to job placement, career coaching, employers, etc.
 
