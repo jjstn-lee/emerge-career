@@ -30,7 +30,7 @@ LLM-powered application for managing and classifying support tickets with AI-pow
 
 ## Architecture
 
-![Architecture here](support-ticket-architecture.png)
+![Architecture here](./support-ticket-architecture.png)
 
 ## Project Structure
 
