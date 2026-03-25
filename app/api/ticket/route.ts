@@ -2,12 +2,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import crypto from 'crypto';
-import { Category, categorizeEmail } from '@/lib/qwen/categorizer'
-import { mg, sendMessage } from '@/lib/mailgun/client'
+import { categorizeEmail } from '@/lib/qwen/categorizer'
+import { sendMessage } from '@/lib/mailgun/client'
 import { verifyMailgunSignature } from '@/lib/mailgun/signature';
+import { Category, isCategory } from '@/lib/types';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -62,17 +62,35 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("parsing the rest of formdata...")
+    
+    // Debug: log all formData entries
+    console.log("===FormData entries===")
+    for (const [key, value] of formData.entries()) {
+      console.log(`Key: ${key}, Type: ${typeof value}, Value: ${value instanceof File ? `File(${value.name})` : value}`)
+    }
+    console.log("===End FormData===")
+    
     // taking email data from form
     const messageID = formData.get('Message-Id')?.toString() || 'No Message-Id'
     const sender = formData.get('sender')?.toString() || 'unknown sender'
     const dateHeader = formData.get('Date')?.toString() || formData.get('date')?.toString() || null
     const subject = formData.get('subject')?.toString() || 'No subject'
     const body = (formData.get('stripped-text') || formData.get('body-plain'))?.toString() || ''
-    const category = await categorizeEmail(subject, body) as string // OpenAI API call
+    
+
+    console.log('Categorizing ticket', { subject, bodyPreview: body.slice(0, 180) })
+    const category = await categorize(subject, body)
+    console.log('Categorize result', { category })
+
+    if (!category || !isCategory(category)) {
+      throw new Error(`Invalid category after retries: ${JSON.stringify(category)}`)
+    }
+
     const generated: boolean = (String(formData.get('generated')).toLowerCase() === 'true') || false; 
 
 
 
+    
     if (dateHeader) {
       const numeric = Number(dateHeader)
 
@@ -88,6 +106,9 @@ export async function POST(request: NextRequest) {
     } else {
       timestamp = new Date().toISOString()
     }
+
+
+
 
 
     console.log("inserting into supabase...")
@@ -110,9 +131,9 @@ export async function POST(request: NextRequest) {
 
 
       
-      if (!generated) {
-        await sendMessage(sender, subject, messageID)
-      }
+    if (!generated) {
+      await sendMessage(sender, subject, messageID)
+    }
 
     // sanity check for what formdata looks like
     // for (const [key, value] of formData.entries()) {
@@ -170,3 +191,30 @@ export async function POST(request: NextRequest) {
 //     return NextResponse.json({ ok: false, error: text }, { status: 500 });
 //   }
 // }
+
+
+async function categorize(subject: string, body: string,retries=3, delay=2500) {
+  let lastError;
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await categorizeHelper(subject, body);
+        } catch (err) {
+          lastError = err;
+          console.log(`   attempt ${i}`)
+          console.log(`   lastError ${lastError}`)
+          await new Promise(res => setTimeout(res, delay * (i + 1)));
+        }
+      }
+    
+      throw lastError;
+    }
+
+async function categorizeHelper(subject: string, body: string) {
+  const category = await categorizeEmail(subject, body) as Category
+  
+  if (!isCategory(category)) {
+    throw new Error(`Categorizer response was not a valid category: ${category}`);
+  }
+
+  return category;
+}

@@ -1,4 +1,5 @@
-export type Category = "usage" | "education" | "career";
+
+import { Category, isCategory } from "@/lib/types";
 
 const MLVOCA_URL = "https://mlvoca.com/api/generate";
 const MODEL = "deepseek-r1:1.5b";
@@ -8,13 +9,14 @@ function buildPrompt(subject: string, body: string) {
 
     Your task is to read the email subject and body, and classify the email into exactly one of the following categories:
 
-    - "usage": Issues related to using the product, (i.e, account, login, billing, settings, etc.)
-    - "education": Clarifying questions about course material or issues related to scheduling tests
-    - "career": Issues related to job placement, career coaching, employers, etc.
+    - "education": Questions or complaints about course content, video lessons, quizzes, assignments, certifications, course access, or learning materials.
+    - "career": Questions or complaints about job placement, job applications, career coaching sessions, resume reviews, employer matching, or other career-related services.
+    - "usage": Questions or complaints about the platform itself that are unrelated to a specific feature — such as login issues, account access, billing charges, subscription management, or settings.
 
     Instructions:
-    - Choose the single best category.
-    - You MUST choose one category.
+    - If the email mentions both a feature issue (education or career) AND a platform issue (usage), pick the feature category.
+    - If the email is ambiguous, default to "usage".
+    - You MUST choose exactly one of the three categories: "education", "career", or "usage".
     - Respond with ONLY the category name (no explanation).
     - Respond with plain text only. Do not use markdown, bullet points, headers, special characters, newline characters, or formatting of any kind.
 
@@ -51,17 +53,28 @@ export async function categorizeEmail(subject: string, body: string): Promise<st
 
     const data: MlvocaResponse = await response.json();
 
-
-    console.log("----before cleaning----");
+    console.log("----categorizer raw response----");
     console.log(data.response);
-    console.log("-----------------------");
-    
+    console.log("--------------------------------");
 
-    return data.response
+    const cleaned = data.response
       .trim()
-      .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '') // remove <think>...</think> blocks first
-      .replace(/<[\s\S]*?>/g, '')                       // remove any remaining <...> tags and everything between the angle brackets
-      .replace(/[\n\r]+/g, '')                          // newlines
-      .replace(/[*_~`#]+/g, '')                         // markdown symbols (note: '>' removed above)
+      .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/[\n\r]+/g, ' ')
+      .replace(/[*_~`#]+/g, '')
       .toLowerCase()
+      .trim();
+
+    const match = cleaned.match(/\b(usage|education|career)\b/);
+
+    if (match) {
+      const candidate = match[1] as Category;
+      if (isCategory(candidate)) {
+        return candidate;
+      }
+    }
+
+    console.error('Categorizer returned invalid category', { raw: data.response, cleaned });
+    throw new Error(`Categorizer response was not a valid category: '${cleaned}'`);
 }

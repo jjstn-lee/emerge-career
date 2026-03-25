@@ -5,23 +5,14 @@ const mailgun = new Mailgun(FormData); // or const formData = require('form-data
 
 export const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY!});
 
-console.log(`API Key present: ${process.env.MAILGUN_API_KEY}`);
 
 export async function sendMessage(sender: string, subject: string, messageID: string) {
-    // console.log("in mailgun/client.ts")
-    // console.log(`sender: ${sender}`)
-    // console.log(`subject: ${subject}`)
-    // console.log(`messageID: ${messageID}`)
-    mg.messages.create('mg.justin-hisung-lee.dev', {
+    return await mg.messages.create('mg.justin-hisung-lee.dev', {
         from: "ticket@mg.justin-hisung-lee.dev",
         to: sender,
         subject: `Re: ${subject}`,
         text: "Thanks for your email! We've entered your complaint into our system and will get back to you shortly.",
         "h:In-Reply-To": messageID,
         "h:References": messageID
-    })
-    .then(msg => console.log(msg)) // logs response data
-    .catch(err => console.error(err)); // logs any error
-
-    // console.log("in mailgun/client.ts, successfully sent message")
+    });
 }

@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
       total,
       volumeByDay,
       volumeByCat,
+    }, {
+      headers: {
+        'Cache-Control': 's-maxage=60, stale-while-revalidate=120'
+      }
     })
   } catch (e) {
     console.error('Error calculating statistics:', e)

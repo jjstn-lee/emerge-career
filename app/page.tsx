@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell,
-} from "recharts";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { IoLogoGithub } from 'react-icons/io5';
+
+const TicketCharts = dynamic(() => import('@/components/TicketCharts'), { ssr: false });
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Ticket {
@@ -51,31 +50,6 @@ const COLORS = {
   bars: "#E78B48ff",
 } as const;
 
-// ── Chart Card ─────────────────────────────────────────────────────────────
-interface ChartCardProps {
-  title: string;
-  children: React.ReactNode;
-  span?: number;
-}
-
-function ChartCard({ title, children, span = 1 }: ChartCardProps) {
-  return (
-    <div style={{
-      background: COLORS.surface, border: `2px solid ${COLORS.border}`,
-      borderRadius: 16, padding: "20px 24px", gridColumn: `span ${span}`,
-    }}>
-      <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: COLORS.muted, fontFamily: "'DM Mono', monospace", marginBottom: 16 }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-
-const tooltipStyle = {
-  contentStyle: { background: "#b2b2b2ff", border: `2px solid ${COLORS.border}`, borderRadius: 8, color: COLORS.text, fontSize: 12 },
-  labelStyle: { color: COLORS.accent },
-  itemStyle: { color: COLORS.text },
-  cursor: { fill: COLORS.accentDim },
-};
 
 const getStatusColor = (status: 'unresolved' | 'in_progress' | 'resolved') => {
   switch (status) {
@@ -114,6 +88,15 @@ export default function Home() {
   const [showMailTooltip, setShowMailTooltip] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
+
+  const displayedTickets = useMemo(() => (tickets ?? [])
+    .filter(t => categoryFilter === "all" || t.category === categoryFilter)
+    .filter(t => generatedFilter === "all" || (generatedFilter === "generated" ? t.generated : !t.generated))
+    .filter(t => statusFilter === "all" || t.status === statusFilter)
+    .sort((a, b) => {
+      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      return sortOrder === "asc" ? diff : -diff;
+    }), [tickets, categoryFilter, generatedFilter, statusFilter, sortOrder]);
 
   const fetchData = useCallback(async (showLoadingSpinner = false) => {
     try {
@@ -164,12 +147,75 @@ export default function Home() {
   // ── Loading State ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Noto Sans', sans-serif", color: COLORS.text }}>
+      <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'Noto Sans', sans-serif", animation: 'fadeIn 250ms ease-out' }}>
         <style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { background: ${COLORS.bg}; }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50%       { opacity: 0.8; }
+          }
+          .skeleton { animation: pulse 1.4s ease-in-out infinite; }
         `}</style>
-        <div style={{ fontSize: 14 }}>Loading tickets...</div>
+
+        {/* Top Nav (same as dashboard) */}
+        <div style={{ borderBottom: `2px solid ${COLORS.border}`, padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.surface }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: "'Noto Sans', sans-serif", fontWeight: 600, fontSize: 15 }}>
+              Support Ticket Classifier
+            </span>
+          </div>
+        </div>
+
+        {/* Skeleton Content */}
+        <div style={{ padding: "28px 32px", maxWidth: 1280, margin: "0 auto" }}>
+          {/* Charts Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 24 }}>
+            {/* Skeleton Chart Card 1 */}
+            <div style={{ background: COLORS.surface, border: `2px solid ${COLORS.border}`, borderRadius: 16, padding: "20px 24px" }}>
+              <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4, marginBottom: 16, width: 120 }}></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton" style={{ height: 24, background: COLORS.border, borderRadius: 4 }}></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Skeleton Chart Card 2 */}
+            <div style={{ background: COLORS.surface, border: `2px solid ${COLORS.border}`, borderRadius: 16, padding: "20px 24px" }}>
+              <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4, marginBottom: 16, width: 110 }}></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="skeleton" style={{ height: 20, background: COLORS.border, borderRadius: 4 }}></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Skeleton Table */}
+          <div style={{ background: COLORS.surface, border: `2px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ padding: "14px 24px", borderBottom: `1px solid ${COLORS.border}` }}>
+              <div className="skeleton" style={{ height: 14, background: COLORS.border, borderRadius: 4, width: 200 }}></div>
+            </div>
+            <div style={{ padding: "16px 24px" }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 1fr 1fr 100px 100px 100px 100px", gap: 16, marginBottom: 12, alignItems: "center" }}>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                  <div className="skeleton" style={{ height: 16, background: COLORS.border, borderRadius: 4 }}></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -177,11 +223,7 @@ export default function Home() {
   // ── Empty State ────────────────────────────────────────────────────────
   if (!tickets || tickets.length === 0) {
     return (
-      <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Noto Sans', sans-serif", color: COLORS.text }}>
-        <style>{`
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: ${COLORS.bg}; }
-        `}</style>
+      <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Noto Sans', sans-serif", color: COLORS.text, animation: 'fadeIn 250ms ease-out' }}>
         <div style={{ maxWidth: 520, textAlign: "center" }}>
           <h1 style={{ fontSize: 36, fontWeight: 700, color: COLORS.text, fontFamily: "'Noto Sans', sans-serif", marginBottom: 12 }}>
             No Tickets Yet
@@ -194,35 +236,11 @@ export default function Home() {
     );
   }
 
-  const displayedTickets = (tickets ?? [])
-    .filter(t => categoryFilter === "all" || t.category === categoryFilter)
-    .filter(t => generatedFilter === "all" || (generatedFilter === "generated" ? t.generated : !t.generated))
-    .filter(t => statusFilter === "all" || t.status === statusFilter)
-    .sort((a, b) => {
-      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-      return sortOrder === "asc" ? diff : -diff;
-    });
-
   // ── Dashboard ──────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'Noto Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'Noto Sans', sans-serif", animation: 'fadeIn 250ms ease-out' }}>
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: ${COLORS.bg}; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: ${COLORS.bg}; }
-        ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 3px; }
-        .refresh-btn { transition: color .15s; }
         .refresh-btn:hover { color: ${COLORS.accent} !important; }
-        @keyframes swipeOut {
-          0% { opacity: 1; transform: translateX(0); }
-          100% { opacity: 0; transform: translateX(100%); }
-        }
-        .ticket-swipe-out { animation: swipeOut 300ms ease-out forwards; }
-        @keyframes slideIn {
-          0% { opacity: 0; transform: translateX(20px); }
-          100% { opacity: 1; transform: translateX(0); }
-        }
       `}</style>
 
       {/* Top Nav */}
@@ -260,7 +278,16 @@ export default function Home() {
                   try {
                     const response = await fetch('/api/ticket/generate', { method: 'POST' });
                     if (!response.ok) {
-                      const errorMsg = `Generating new email failed, most likely a rate limiting issue with the mlvoca API. Try again later.`;
+                      let errorMsg = `${response.status}`;
+                      try {
+                        const errorData = await response.json();
+                        if (errorData.error) {
+                          errorMsg = errorData.error;
+                        }
+                        if (errorData.details) {
+                          errorMsg += `: ${errorData.details}`;
+                        }
+                      } catch { }
                       throw new Error(errorMsg);
                     }
                     const result = await response.json();
@@ -271,14 +298,14 @@ export default function Home() {
                     const msg = err instanceof Error ? err.message : "Failed to generate";
                     console.error(err);
                     setGenerateStatus(msg);
-                    setErrors(prev => [...prev, `Generation: ${msg}`]);
+                    setErrors(prev => [...prev, `Generation failed (status: ${msg}), most likely due to external API rate limits/timeouts. Try again later.`]);
                   } finally {
                     setGenerating(false);
                     // clear status after a short delay
                     setTimeout(() => setGenerateStatus(null), 3500);
                   }
                 }}
-                disabled={generating}
+                aria-disabled={generating}
                 style={{
                   background: "none",
                   border: "none",
@@ -289,9 +316,10 @@ export default function Home() {
                   transition: "color 0.15s",
                   opacity: generating ? 0.85 : 1,
                   fontFamily: "'DM Mono', monospace",
+                  pointerEvents: generating ? "auto" : "auto",
                 }}
-                onMouseEnter={(e) => { if (!generating) e.currentTarget.style.color = COLORS.accent; setShowGenerateTooltip(true); }}
-                onMouseLeave={(e) => { if (!generating) e.currentTarget.style.color = COLORS.muted; setShowGenerateTooltip(false); }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = COLORS.accent; setShowGenerateTooltip(true); }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = generating ? "#ff5959ff" : COLORS.muted; setShowGenerateTooltip(false); }}
               >
                 {generating ? "GENERATING..." : "+ GENERATE"}
               </button>
@@ -319,9 +347,9 @@ export default function Home() {
                   fontFamily: "'DM Mono', monospace",
                 }}
               >
-                <div style={{ fontWeight: 600, marginBottom: 6, color: COLORS.accent }}>Generate synthetic tickets</div>
+                <div style={{ fontWeight: 600, marginBottom: 6, color: COLORS.accent }}>{generating ? "Generating in progress" : "Generate synthetic tickets"}</div>
                 <div style={{ color: COLORS.muted, lineHeight: 1.3 }}>
-                  Creates a small batch of 3 synthetic support tickets for testing and demo purposes.
+                  {generating ? "This operation may take a little longer due to free external API rate limits and smaller models (I'm broke, sorry!)" : "Creates a small batch of 3 synthetic support tickets for testing and demo purposes."}
                 </div>
               </div>
             </div>
@@ -376,43 +404,7 @@ export default function Home() {
 
       <div style={{ padding: "28px 32px", maxWidth: 1280, margin: "0 auto" }}>
         {/* Charts Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 24 }}>
-          {/* Volume by Category */}
-          <ChartCard title="Volume by Category" span={1}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stats!.volumeByCat} layout="vertical" barCategoryGap="25%">
-                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
-                <XAxis type="number" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "'Noto Sans', sans-serif" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis type="category" dataKey="category" tick={{ fill: COLORS.text, fontSize: 11, fontFamily: "'Noto Sans', sans-serif" }} axisLine={false} tickLine={false} width={110} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Tickets">
-                  {stats!.volumeByCat.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={COLORS.bars}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* Volume by Day */}
-          <ChartCard title="Volume by Day" span={1}>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={stats!.volumeByDay} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "'Noto Sans', sans-serif" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: COLORS.muted, fontSize: 11, fontFamily: "'Noto Sans', sans-serif" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="count" fill={COLORS.bars} radius={[4, 4, 0, 0]} name="Tickets" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-
-
-        </div>
+        <TicketCharts stats={stats} />
 
         {/* Raw Table */}
         <div style={{ background: COLORS.surface, border: `2px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
