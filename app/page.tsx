@@ -498,9 +498,9 @@ export default function Home() {
                       style={{ background: COLORS.surface, color: COLORS.muted, fontSize: 11, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", borderRadius: 4, padding: "2px 6px", fontFamily: "'DM Mono', monospace" }}
                     >
                       <option value="all">All Statuses</option>
-                      <option value="unresolved">Unresolved</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="resolved">Resolved</option>
+                      <option value="unresolved">unresolved</option>
+                      <option value="in_progress">in progress</option>
+                      <option value="resolved">resolved</option>
                     </select>
                   </th>
                 </tr>
