@@ -349,7 +349,7 @@ export default function Home() {
               >
                 <div style={{ fontWeight: 600, marginBottom: 6, color: COLORS.accent }}>{generating ? "Generating in progress" : "Generate synthetic tickets"}</div>
                 <div style={{ color: COLORS.muted, lineHeight: 1.3 }}>
-                  {generating ? "This operation may take a little longer due to free external API rate limits and smaller models (I'm broke, sorry!)" : "Creates a small batch of 3 synthetic support tickets for testing and demo purposes."}
+                  {generating ? "Having Claude cook up synthetic ticket data..." : "Calls Claude to generate a batch of synthetic support tickets for testing and demo purposes. Use this if you feel too lazy to send in real emails!"}
                 </div>
               </div>
             </div>
