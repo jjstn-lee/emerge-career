@@ -434,6 +434,7 @@ export default function Home() {
                   transform: showMailTooltip ? "translateY(0)" : "translateY(-6px)",
                   transition: "opacity 180ms ease, transform 180ms ease",
                   pointerEvents: showMailTooltip ? "auto" : "none",
+                  fontFamily: "'DM Mono', monospace",
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 6, color: COLORS.accent }}>Support inbox address</div>
