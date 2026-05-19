@@ -1,8 +1,9 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { NormalizedEmailSchema } from './schema';
 import { emailJSON } from '@/lib/types';
 
-const MLVOCA_URL = "https://mlvoca.com/api/generate";
-const MODEL = "deepseek-r1:1.5b";
+const client = new Anthropic();
+const MODEL = "claude-sonnet-4-20250514";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -20,32 +21,21 @@ Rules:
 - All line breaks in "stripped-text" must be represented as \\n.
 - "subject" and "stripped-text" must be written from the perspective of the client, NOT the customer support analyst.`;
 
-interface MlvocaResponse {
-  response: string;
-  done: boolean;
-}
-
-async function callMlvoca(prompt: string): Promise<emailJSON> {
-  const response = await fetch(MLVOCA_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      prompt,
-      stream: false,
-      temperature: 0.6,
-    }),
+async function callAnthropic(prompt: string): Promise<emailJSON> {
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
+    messages: [{ role: "user", content: prompt }],
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`mlvoca API error ${response.status}: ${errorText}`);
-  }
+  // Fix 1: Use a type predicate to narrow to TextBlock, then extract .text
+  const raw = message.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("");
 
-  const data: MlvocaResponse = await response.json();
-  const stripped = data.response
+  const stripped = raw
     .trim()
-    .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/[*_~`#>]+/g, '')
     .replace(/\\'/g, "'");
 
@@ -56,13 +46,17 @@ async function callMlvoca(prompt: string): Promise<emailJSON> {
   console.log(`NORMALIZED LLM OUTPUT: ${normalized}`);
 
   try {
-    const emailJSON = NormalizedEmailSchema.parse(JSON.parse(normalized)) as unknown as emailJSON;
-    console.log(`Validated email: ${emailJSON}`);
-    return emailJSON;
+    // Fix 2: Derive the type from Zod instead of using a double cast
+    const parsed = NormalizedEmailSchema.parse(JSON.parse(normalized));
+    const validatedEmail = parsed as emailJSON;
+
+    // Fix 3: Use JSON.stringify so the object is logged correctly
+    console.log(`Validated email: ${JSON.stringify(validatedEmail)}`);
+    return validatedEmail;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Failed to parse/validate generated email JSON:', message);
-    console.error('Original mlvoca response:', data.response);
+    console.error('Original Anthropic response:', raw);
     console.error('Normalized output:', normalized);
     throw new Error(`Failed to parse/validate generated email JSON: ${message}`);
   }
@@ -90,7 +84,7 @@ Example of a valid output:
 }`;
 
 export async function generateUsageEmail(): Promise<emailJSON> {
-  return callMlvoca(USAGE_PROMPT);
+  return callAnthropic(USAGE_PROMPT);
 }
 
 // ── Agent 2: Education tickets ────────────────────────────────────────────────
@@ -116,7 +110,7 @@ Example of a valid output:
 }`;
 
 export async function generateEducationEmail(): Promise<emailJSON> {
-  return callMlvoca(EDUCATION_PROMPT);
+  return callAnthropic(EDUCATION_PROMPT);
 }
 
 // ── Agent 3: Career tickets ───────────────────────────────────────────────────
@@ -142,5 +136,5 @@ Example of a valid output:
 }`;
 
 export async function generateCareerEmail(): Promise<emailJSON> {
-  return callMlvoca(CAREER_PROMPT);
+  return callAnthropic(CAREER_PROMPT);
 }
