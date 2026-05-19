@@ -368,7 +368,7 @@ export default function Home() {
               onMouseLeave={() => setShowRefreshTooltip(false)}
               style={{ background: "none", border: "none", color: refreshing ? "#ff5959ff" : COLORS.muted, fontSize: 11, cursor: refreshing ? "not-allowed" : "pointer", letterSpacing: 1, fontFamily: "'DM Mono', monospace", opacity: refreshing ? 0.85 : 1, transition: "color 0.15s" }}
             >
-              {refreshing ? "REFRESHING..." : "↻ REFRESH"}
+              {refreshing ? "Refreshing..." : "↻ Refresh!"}
             </button>
             <div
               role="status"
